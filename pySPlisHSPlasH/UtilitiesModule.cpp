@@ -12,6 +12,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/chrono.h>
+#include <pybind11/numpy.h>
 #include <Utilities/BinaryFileReaderWriter.h>
 #include <Utilities/Counting.h>
 #include <Utilities/FileSystem.h>
@@ -167,7 +168,79 @@ void UtilitiesModule(py::module m) {
             .def_static("readParticle", overload_cast_<const std::string &, const Vector3r &, const Matrix3r &,
                     const Real, std::vector<Vector3r> &, std::vector<Vector3r> &, Real &>()(
                     &Utilities::PartioReaderWriter::readParticles))
-            .def_static("writeParticle", &Utilities::PartioReaderWriter::writeParticles);
+            .def_static("writeParticle", &Utilities::PartioReaderWriter::writeParticles)
+            // Python-friendly helper: accepts lists/vectors of Vector3r and optional velocities
+            .def_static(
+                "writeParticles",
+                [](const std::string &fileName,
+                   py::object positions,
+                   py::object velocities,
+                   const Real particleRadius)
+                {
+                    // Convert Python sequence/NumPy array to std::vector<Vector3r>
+                    std::vector<Vector3r> posBuf;
+                    if (py::isinstance<py::array>(positions))
+                    {
+                        py::array posArray = positions.cast<py::array>();
+                        py::buffer_info buf = posArray.request();
+                        if (buf.ndim != 2 || buf.shape[1] != 3)
+                            throw py::value_error("positions must have shape (N, 3)");
+                        // Force cast to Real and C-contiguous
+                        py::array_t<Real, py::array::c_style | py::array::forcecast> arr = positions.cast<py::array>();
+                        py::buffer_info abuf = arr.request();
+                        const Real *data = static_cast<const Real *>(abuf.ptr);
+                        const size_t n = static_cast<size_t>(abuf.shape[0]);
+                        posBuf.resize(n);
+                        for (size_t i = 0; i < n; ++i)
+                        {
+                            const Real *p = &data[3 * i];
+                            posBuf[i] = Vector3r(p[0], p[1], p[2]);
+                        }
+                    }
+                    else
+                    {
+                        posBuf = positions.cast<std::vector<Vector3r>>();
+                    }
+                    const unsigned int numParticles = static_cast<unsigned int>(posBuf.size());
+                    const Vector3r *posPtr = (numParticles > 0) ? posBuf.data() : nullptr;
+                    const Vector3r *velPtr = nullptr;
+                    std::vector<Vector3r> velBuf;
+                    if (!velocities.is_none())
+                    {
+                        if (py::isinstance<py::array>(velocities))
+                        {
+                            py::array velArray = velocities.cast<py::array>();
+                            py::buffer_info vbuf = velArray.request();
+                            if (vbuf.ndim != 2 || vbuf.shape[1] != 3)
+                                throw py::value_error("velocities must have shape (N, 3)");
+                            py::array_t<Real, py::array::c_style | py::array::forcecast> varr = velocities.cast<py::array>();
+                            py::buffer_info vabuf = varr.request();
+                            const Real *vdata = static_cast<const Real *>(vabuf.ptr);
+                            const size_t vn = static_cast<size_t>(vabuf.shape[0]);
+                            if (vn != posBuf.size())
+                                throw py::value_error("velocities size must match positions size");
+                            velBuf.resize(vn);
+                            for (size_t i = 0; i < vn; ++i)
+                            {
+                                const Real *v = &vdata[3 * i];
+                                velBuf[i] = Vector3r(v[0], v[1], v[2]);
+                            }
+                        }
+                        else
+                        {
+                            velBuf = velocities.cast<std::vector<Vector3r>>();
+                            if (velBuf.size() != posBuf.size())
+                                throw py::value_error("velocities size must match positions size");
+                        }
+                        velPtr = velBuf.data();
+                    }
+                    Utilities::PartioReaderWriter::writeParticles(fileName, numParticles, posPtr, velPtr, particleRadius);
+                },
+                py::arg("file"),
+                py::arg("positions"),
+                py::arg("velocities") = py::none(),
+                py::arg("radius") = 0.0
+            );
 
     // ---------------------------------------
     // String tools

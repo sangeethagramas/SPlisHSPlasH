@@ -135,6 +135,7 @@ set(ELASTICITY_HEADER_FILES
 	Elasticity/Elasticity_Becker2009.h	
 	Elasticity/Elasticity_Peer2018.h
 	Elasticity/Elasticity_Kugelstadt2021.h
+	Elasticity/Elasticity_Custom_Boundary.h
 	)
 	
 set(ELASTICITY_SOURCE_FILES
@@ -142,6 +143,7 @@ set(ELASTICITY_SOURCE_FILES
 	Elasticity/Elasticity_Becker2009.cpp
 	Elasticity/Elasticity_Peer2018.cpp
 	Elasticity/Elasticity_Kugelstadt2021.cpp
+	Elasticity/Elasticity_Custom_Boundary.cpp
 	)
 	
 set(UTILS_HEADER_FILES
@@ -290,10 +292,11 @@ target_include_directories(SPlisHSPlasH PUBLIC
 	${NEIGHBORHOOD_SEARCH_INCLUDE_DIR}
 	${GENERICPARAMETERS_INCLUDE_DIR}
 	${DISCREGRID_INCLUDE_DIR}
+	${CMAKE_SOURCE_DIR}/extern/cnpy
 )
 
 target_link_libraries(SPlisHSPlasH
-	PUBLIC Utilities tinyexpr
+	PUBLIC Utilities tinyexpr cnpy
 	INTERFACE
 	${NEIGHBORHOOD_SEARCH_LIBRARIES}
 	${DISCREGRID_LIBRARIES}

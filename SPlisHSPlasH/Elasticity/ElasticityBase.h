@@ -18,7 +18,7 @@ namespace SPH
 		Vector3r m_fixedBoxMax;
 
 		virtual void initParameters();
-		void determineFixedParticles();
+		virtual void determineFixedParticles();
 
 	public:
 		static int YOUNGS_MODULUS;

@@ -25,6 +25,10 @@ set(TOPLEVEL_INCLUDE_DIR ${PROJECT_SOURCE_DIR})
 # foreign external libraries
 ################################################################################
 add_subdirectory(extern/zlib)
+# Provide ZLIB hints for subprojects that use find_package(ZLIB)
+set(ZLIB_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/zlib/src CACHE INTERNAL "")
+set(ZLIB_LIBRARIES zlib CACHE INTERNAL "")
+add_subdirectory(extern/cnpy)
 add_subdirectory(extern/partio)
 add_subdirectory(extern/md5)
 add_subdirectory(extern/tinyexpr)
